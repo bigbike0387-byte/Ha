@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>หน้าครัว / พนักงาน - QR Order</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Header ครัว -->
+<header class="staff-header">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <h2 style="font-size:1.1rem;margin-bottom:2px">👨‍🍳 หน้าจอครัว / พนักงาน</h2>
+      <div style="font-size:0.8rem;opacity:0.8" id="staff-time">--:--</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="notif-count-badge" class="badge badge-new" style="display:none">0 แจ้งเตือน</span>
+      <button class="btn btn-accent btn-sm" onclick="toggleNotifPanel()">🔔</button>
+      <button class="btn btn-ghost btn-sm" style="color:white;border-color:rgba(255,255,255,0.3)" onclick="logout()">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <!-- ฟิลเตอร์สถานะ -->
+  <div style="display:flex;gap:6px;margin-top:12px;overflow-x:auto;padding-bottom:4px">
+    <button class="btn btn-sm" style="background:white;color:var(--primary)" onclick="filterOrders('all', this)">ทั้งหมด</button>
+    <button class="btn btn-sm btn-ghost" style="color:white;border-color:rgba(255,255,255,0.3)" onclick="filterOrders('pending', this)">⏳ รอยืนยัน</button>
+    <button class="btn btn-sm btn-ghost" style="color:white;border-color:rgba(255,255,255,0.3)" onclick="filterOrders('confirmed', this)">✅ ยืนยันแล้ว</button>
+    <button class="btn btn-sm btn-ghost" style="color:white;border-color:rgba(255,255,255,0.3)" onclick="filterOrders('cooking', this)">👨‍🍳 กำลังทำ</button>
+    <button class="btn btn-sm btn-ghost" style="color:white;border-color:rgba(255,255,255,0.3)" onclick="filterOrders('ready', this)">🔔 พร้อมเสิร์ฟ</button>
+  </div>
+</header>
+
+<!-- แผง Notification -->
+<div id="notif-panel" style="display:none;background:var(--white);border-bottom:2px solid var(--primary-light);max-height:300px;overflow-y:auto;padding:12px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <span class="fw-bold">🔔 การแจ้งเตือน</span>
+    <button class="btn btn-sm btn-ghost" onclick="clearAllNotifs()">ล้างทั้งหมด</button>
+  </div>
+  <div id="notif-list"></div>
+</div>
+
+<!-- Orders Grid -->
+<div style="padding:16px;background:var(--gray-100);min-height:calc(100vh - 140px)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h3 style="font-size:1rem" id="orders-count-label">ออเดอร์ทั้งหมด</h3>
+    <span class="text-sm text-muted" id="last-refresh">อัพเดท: --:--</span>
+  </div>
+
+  <div id="orders-empty" class="empty-state" style="display:none">
+    <div class="empty-icon">✅</div>
+    <div class="empty-text">ไม่มีออเดอร์ในขณะนี้</div>
+    <div class="empty-sub">ออเดอร์ใหม่จะแสดงอัตโนมัติ</div>
+  </div>
+
+  <div class="orders-grid" id="orders-grid"></div>
+</div>
+
+<!-- Modal: แชทกับลูกค้า -->
+<div class="modal-overlay" id="chat-modal" style="display:none" onclick="if(event.target===this)closeChatModal()">
+  <div class="modal-box center-modal">
+    <div class="modal-header">
+      <span class="modal-title" id="chat-modal-title">💬 แชทกับลูกค้า</span>
+      <button class="modal-close" onclick="closeChatModal()">✕</button>
+    </div>
+
+    <div class="chat-container">
+      <div class="chat-messages" id="staff-chat-messages"></div>
+    </div>
+
+    <div class="chat-input-area" style="margin-top:8px;border:1.5px solid var(--gray-200);border-radius:var(--radius);overflow:hidden">
+      <input type="text" id="staff-chat-input" placeholder="ตอบกลับลูกค้า..."
+             onkeydown="if(event.key==='Enter') sendStaffMsg()">
+      <button class="btn btn-primary btn-sm" onclick="sendStaffMsg()">ส่ง</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="staffQuickMsg('🍳 กำลังเตรียมให้นะคะ')">🍳 กำลังทำ</button>
+      <button class="btn btn-ghost btn-sm" onclick="staffQuickMsg('✅ อาหารพร้อมเสิร์ฟแล้วค่ะ')">✅ พร้อมแล้ว</button>
+      <button class="btn btn-ghost btn-sm" onclick="staffQuickMsg('ขออภัยในความล่าช้านะคะ')">🙏 ขอโทษ</button>
+      <button class="btn btn-ghost btn-sm" onclick="staffQuickMsg('รับทราบแล้วค่ะ 👍')">👍 รับทราบ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container" class="toast-container"></div>
+
+<script src="js/auth.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/order.js"></script>
+<script src="js/admin.js"></script>
+<script>
+  // ===== ตัวแปรหลัก =====
+  let currentFilter = 'all';
+  let activeChatOrderId = null;
+  let staffName = 'พนักงาน';
+  let knownOrderIds = new Set();
+  let knownCallIds = new Set();
+
+  // ===== เริ่มต้น =====
+  window.onload = function() {
+    // ตรวจสอบสิทธิ์
+    if (!isLoggedIn()) {
+      window.location.href = 'login.html';
+      return;
+    }
+    const user = getCurrentUser();
+    if (user.role !== 'staff' && user.role !== 'admin') {
+      alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
+      redirectByRole(user);
+      return;
+    }
+    staffName = user.name || 'พนักงาน';
+
+    // แสดงเวลา
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // โหลดออเดอร์
+    renderOrders();
+
+    // Auto refresh ทุก 4 วินาที
+    setInterval(() => {
+      renderOrders();
+      checkNewNotifications();
+    }, 4000);
+
+    // บันทึก IDs ที่มีอยู่แล้ว
+    getOrders().forEach(o => knownOrderIds.add(o.id));
+    getNotifications().filter(n => n.type === 'call_staff').forEach(n => knownCallIds.add(n.id));
+  };
+
+  function updateClock() {
+    document.getElementById('staff-time').textContent =
+      new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  // ===== Render ออเดอร์ =====
+  function renderOrders() {
+    const grid = document.getElementById('orders-grid');
+    const empty = document.getElementById('orders-empty');
+    const label = document.getElementById('orders-count-label');
+
+    let orders = getOrders().filter(o => !['paid', 'cancelled'].includes(o.status));
+
+    if (currentFilter !== 'all') {
+      orders = orders.filter(o => o.status === currentFilter);
+    }
+
+    // เรียงจากใหม่สุด
+    orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    label.textContent = `ออเดอร์ ${orders.length > 0 ? orders.length + ' รายการ' : 'ทั้งหมด'}`;
+    document.getElementById('last-refresh').textContent = 'อัพเดท: ' +
+      new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    if (orders.length === 0) {
+      empty.style.display = 'block';
+      grid.innerHTML = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    grid.innerHTML = orders.map(order => renderOrderCard(order)).join('');
+  }
+
+  function renderOrderCard(order) {
+    const isNew = Date.now() - new Date(order.createdAt) < 60000 && order.status === 'pending';
+    const timeAgo = getTimeAgo(order.createdAt);
+
+    const statusColors = {
+      pending: '#F57F17',
+      confirmed: '#1A73E8',
+      cooking: '#E65100',
+      ready: '#2E7D32',
+      served: '#616161'
+    };
+    const color = statusColors[order.status] || '#424242';
+
+    return `
+      <div class="order-card status-${order.status} ${isNew ? 'status-new' : ''}" id="order-card-${order.id}">
+        <div class="order-card-header">
+          <div>
+            <div class="order-table-num">🍽️ โต๊ะ ${order.tableId}</div>
+            <div class="order-time">${timeAgo}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            ${renderStatusBadge(order.status)}
+            <span class="fw-bold text-primary" style="font-size:0.9rem">${formatPrice(order.total)}</span>
+          </div>
+        </div>
+
+        <div class="order-items-list">
+          ${order.items.map(item => `
+            <div class="order-item-row">
+              <span>${item.emoji} ${item.menuName}</span>
+              <span class="fw-bold">x${item.qty}</span>
+            </div>`).join('')}
+        </div>
+
+        ${order.note ? `<div class="order-note">📝 ${order.note}</div>` : ''}
+
+        <div class="order-actions">
+          ${getNextStatusButton(order)}
+          <button class="btn btn-sm btn-ghost" onclick="openStaffChat('${order.id}', ${order.tableId})">
+            💬 แชท
+          </button>
+          ${order.status !== 'served' ? `
+            <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="cancelOrderConfirm('${order.id}')">
+              ✕
+            </button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function getNextStatusButton(order) {
+    const transitions = {
+      pending: { next: 'confirmed', label: '✅ ยืนยัน', class: 'btn-primary' },
+      confirmed: { next: 'cooking', label: '👨‍🍳 เริ่มทำ', class: 'btn-accent' },
+      cooking: { next: 'ready', label: '🔔 พร้อมเสิร์ฟ', class: 'btn-success' },
+      ready: { next: 'served', label: '🍽️ เสิร์ฟแล้ว', class: 'btn-ghost' }
+    };
+    const t = transitions[order.status];
+    if (!t) return '';
+    return `<button class="btn btn-sm ${t.class}" onclick="advanceStatus('${order.id}', '${t.next}')">${t.label}</button>`;
+  }
+
+  function advanceStatus(orderId, newStatus) {
+    updateOrderStatus(orderId, newStatus, `โดย${staffName}`);
+    renderOrders();
+    showToast(`อัพเดทสถานะ: ${ORDER_STATUS[newStatus]?.label}`, 'success');
+
+    // แจ้งลูกค้าผ่านแชทอัตโนมัติ
+    const statusMsgs = {
+      confirmed: '✅ ออเดอร์ของคุณได้รับการยืนยันแล้ว',
+      cooking: '👨‍🍳 ครัวกำลังทำอาหารของคุณอยู่ รอสักครู่นะคะ',
+      ready: '🔔 อาหารพร้อมแล้ว! พนักงานจะนำมาเสิร์ฟเดี๋ยวนี้',
+      served: '🍽️ เสิร์ฟอาหารเรียบร้อยแล้ว ขอให้อร่อยนะคะ 😊'
+    };
+    if (statusMsgs[newStatus]) {
+      sendChatMessage(orderId, 'staff', staffName, statusMsgs[newStatus]);
+    }
+  }
+
+  function cancelOrderConfirm(orderId) {
+    if (confirm('ยืนยันยกเลิกออเดอร์นี้?')) {
+      updateOrderStatus(orderId, 'cancelled', `ยกเลิกโดย${staffName}`);
+      renderOrders();
+      showToast('ยกเลิกออเดอร์แล้ว', 'warning');
+    }
+  }
+
+  // ===== ฟิลเตอร์ =====
+  function filterOrders(status, btn) {
+    currentFilter = status;
+    document.querySelectorAll('.staff-header .btn').forEach(b => {
+      b.style.background = 'transparent';
+      b.style.color = 'white';
+      b.style.borderColor = 'rgba(255,255,255,0.3)';
+    });
+    btn.style.background = 'white';
+    btn.style.color = 'var(--primary)';
+    btn.style.borderColor = 'white';
+    renderOrders();
+  }
+
+  // ===== แชทกับลูกค้า =====
+  function openStaffChat(orderId, tableId) {
+    activeChatOrderId = orderId;
+    document.getElementById('chat-modal-title').textContent = `💬 แชท - โต๊ะ ${tableId}`;
+    document.getElementById('chat-modal').style.display = 'flex';
+    loadStaffChatMessages();
+  }
+
+  function closeChatModal() {
+    document.getElementById('chat-modal').style.display = 'none';
+    activeChatOrderId = null;
+  }
+
+  function loadStaffChatMessages() {
+    if (!activeChatOrderId) return;
+    const msgs = getChatMessages(activeChatOrderId);
+    const container = document.getElementById('staff-chat-messages');
+    container.innerHTML = msgs.map(m => {
+      if (m.sender === 'system') {
+        return `<div style="text-align:center;font-size:0.75rem;color:var(--gray-400);padding:4px">${m.text}</div>`;
+      }
+      const isMe = m.sender === 'staff';
+      return `
+        <div class="chat-bubble ${isMe ? 'sent' : 'received'}">
+          ${!isMe ? `<div class="chat-sender">${m.senderName}</div>` : ''}
+          ${m.text}
+          <div class="chat-time">${formatTime(m.time)}</div>
+        </div>`;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function sendStaffMsg() {
+    if (!activeChatOrderId) return;
+    const input = document.getElementById('staff-chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    sendChatMessage(activeChatOrderId, 'staff', staffName, text);
+    input.value = '';
+    loadStaffChatMessages();
+  }
+
+  function staffQuickMsg(text) {
+    if (!activeChatOrderId) return;
+    sendChatMessage(activeChatOrderId, 'staff', staffName, text);
+    loadStaffChatMessages();
+  }
+
+  // ===== Notifications =====
+  function checkNewNotifications() {
+    const notifs = getNotifications();
+    const unread = notifs.filter(n => !n.read);
+    const badge = document.getElementById('notif-count-badge');
+
+    if (unread.length > 0) {
+      badge.style.display = 'inline-flex';
+      badge.textContent = `${unread.length} แจ้งเตือน`;
+
+      // ตรวจออเดอร์ใหม่
+      notifs.filter(n => n.type === 'new_order' && !knownOrderIds.has(n.orderId)).forEach(n => {
+        playNotifSound();
+        showToast(n.message, 'info');
+        knownOrderIds.add(n.orderId);
+      });
+
+      // ตรวจเรียกพนักงาน
+      notifs.filter(n => n.type === 'call_staff' && !knownCallIds.has(n.id)).forEach(n => {
+        playNotifSound();
+        showToast(n.message, 'warning');
+        knownCallIds.add(n.id);
+      });
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function toggleNotifPanel() {
+    const panel = document.getElementById('notif-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    if (panel.style.display === 'block') {
+      renderNotifList();
+      markNotificationsRead();
+      document.getElementById('notif-count-badge').style.display = 'none';
+    }
+  }
+
+  function renderNotifList() {
+    const container = document.getElementById('notif-list');
+    const notifs = getNotifications().slice(0, 20);
+    if (notifs.length === 0) {
+      container.innerHTML = '<p class="text-muted text-sm text-center" style="padding:12px">ไม่มีการแจ้งเตือน</p>';
+      return;
+    }
+    container.innerHTML = notifs.map(n => `
+      <div style="padding:8px;border-bottom:1px solid var(--gray-200);font-size:0.83rem">
+        <div>${n.message}</div>
+        <div class="text-xs text-muted">${formatDateTime(n.createdAt)}</div>
+      </div>`).join('');
+  }
+
+  function clearAllNotifs() {
+    localStorage.setItem('notifications', '[]');
+    document.getElementById('notif-list').innerHTML = '';
+    document.getElementById('notif-count-badge').style.display = 'none';
+    showToast('ล้างการแจ้งเตือนแล้ว', 'success');
+  }
+
+  // ===== Sound Notification (ผ่าน Web Audio API) =====
+  function playNotifSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {}
+  }
+
+  // ===== Helper =====
+  function getTimeAgo(isoTime) {
+    const diff = Date.now() - new Date(isoTime);
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'เพิ่งสั่ง';
+    if (mins < 60) return `${mins} นาทีที่แล้ว`;
+    return `${Math.floor(mins / 60)} ชั่วโมงที่แล้ว`;
+  }
+</script>
+</body>
+</html>

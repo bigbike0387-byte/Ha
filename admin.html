@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>แผงควบคุม Admin - QR Order</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+</head>
+<body>
+
+<div class="admin-layout">
+
+  <!-- Mobile Header -->
+  <div class="admin-mobile-header">
+    <span>🍽️ Admin Panel</span>
+    <button class="btn btn-ghost btn-sm" style="color:white;border-color:rgba(255,255,255,0.3)"
+            onclick="toggleAdminSidebar()">☰</button>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar" id="admin-sidebar">
+    <div class="admin-sidebar-brand">
+      <div style="font-size:1.8rem;margin-bottom:6px">🍽️</div>
+      <h2>QR Order Admin</h2>
+      <p id="admin-user-name">-</p>
+    </div>
+
+    <button class="admin-nav-item active" data-page="dashboard" onclick="adminNavigate('dashboard')">
+      <span class="admin-nav-icon">📊</span> Dashboard
+    </button>
+    <button class="admin-nav-item" data-page="menus" onclick="adminNavigate('menus')">
+      <span class="admin-nav-icon">🍜</span> จัดการเมนู
+    </button>
+    <button class="admin-nav-item" data-page="orders" onclick="adminNavigate('orders')">
+      <span class="admin-nav-icon">📋</span> ออเดอร์ทั้งหมด
+    </button>
+    <button class="admin-nav-item" data-page="qrcodes" onclick="adminNavigate('qrcodes')">
+      <span class="admin-nav-icon">📱</span> QR โต๊ะ
+    </button>
+    <button class="admin-nav-item" data-page="reports" onclick="adminNavigate('reports')">
+      <span class="admin-nav-icon">⚠️</span> แจ้งปัญหา
+    </button>
+    <button class="admin-nav-item" data-page="sales" onclick="adminNavigate('sales')">
+      <span class="admin-nav-icon">💰</span> ยอดขาย
+    </button>
+    <button class="admin-nav-item" data-page="users" onclick="adminNavigate('users')">
+      <span class="admin-nav-icon">👥</span> ผู้ใช้
+    </button>
+
+    <div style="position:absolute;bottom:16px;left:0;right:0;padding:0 12px">
+      <button class="admin-nav-item" style="color:#ef9a9a" onclick="logout()">
+        <span class="admin-nav-icon">🚪</span> ออกจากระบบ
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="admin-content">
+
+    <!-- ===== Dashboard ===== -->
+    <div id="page-dashboard" class="admin-page active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2>📊 Dashboard</h2>
+        <button class="btn btn-outline btn-sm" onclick="loadDashboard()">🔄 รีเฟรช</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">ยอดขายวันนี้</div>
+          <div class="stat-value" id="stat-total-today">฿0</div>
+          <div class="stat-sub">จากออเดอร์ที่ชำระแล้ว</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-label">ออเดอร์วันนี้</div>
+          <div class="stat-value" id="stat-orders-today">0</div>
+          <div class="stat-sub">รายการ</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-label">ออเดอร์รอดำเนินการ</div>
+          <div class="stat-value" id="stat-orders-pending">0</div>
+          <div class="stat-sub">รายการที่ยังไม่จ่าย</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-label">รายได้รวมทั้งหมด</div>
+          <div class="stat-value" id="stat-total-revenue">฿0</div>
+          <div class="stat-sub">ตลอดการใช้งาน</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card">
+          <div class="card-header"><span class="card-title">📋 ออเดอร์ล่าสุด</span></div>
+          <div id="recent-orders-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">🔔 การแจ้งเตือนล่าสุด</span></div>
+          <div id="recent-notifs"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== จัดการเมนู ===== -->
+    <div id="page-menus" class="admin-page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2>🍜 จัดการเมนู</h2>
+        <button class="btn btn-primary" onclick="openAddMenu()">+ เพิ่มเมนูใหม่</button>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" onclick="renderAdminMenuList()">ทั้งหมด</button>
+          <button class="btn btn-sm btn-ghost" onclick="renderAdminMenuList('ข้าวและเส้น')">🍚 ข้าว/เส้น</button>
+          <button class="btn btn-sm btn-ghost" onclick="renderAdminMenuList('ซุปและน้ำแกง')">🍲 ซุป</button>
+          <button class="btn btn-sm btn-ghost" onclick="renderAdminMenuList('อาหารจานเดี่ยว')">🍗 จานเดี่ยว</button>
+          <button class="btn btn-sm btn-ghost" onclick="renderAdminMenuList('เครื่องดื่ม')">🥤 เครื่องดื่ม</button>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>รูป</th>
+              <th>ชื่อเมนู</th>
+              <th>หมวดหมู่</th>
+              <th>ราคา</th>
+              <th>สถานะ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="admin-menu-list"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== ออเดอร์ ===== -->
+    <div id="page-orders" class="admin-page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2>📋 ออเดอร์ทั้งหมด</h2>
+        <div style="display:flex;gap:8px">
+          <select class="form-select" style="width:auto" onchange="renderAdminOrders(this.value||null)">
+            <option value="">ทุกสถานะ</option>
+            <option value="pending">⏳ รอยืนยัน</option>
+            <option value="confirmed">✅ ยืนยันแล้ว</option>
+            <option value="cooking">👨‍🍳 กำลังทำ</option>
+            <option value="ready">🔔 พร้อมเสิร์ฟ</option>
+            <option value="served">🍽️ เสิร์ฟแล้ว</option>
+            <option value="paid">💳 ชำระแล้ว</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="renderAdminOrders()">🔄</button>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>โต๊ะ</th>
+              <th>รายการ</th>
+              <th>ยอดรวม</th>
+              <th>สถานะ</th>
+              <th>การชำระ</th>
+              <th>อัพเดท</th>
+            </tr>
+          </thead>
+          <tbody id="admin-orders-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== QR Codes ===== -->
+    <div id="page-qrcodes" class="admin-page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2>📱 QR Code โต๊ะ</h2>
+        <div class="alert alert-info" style="margin:0;font-size:0.8rem;padding:8px 12px">
+          💡 คลิก QR เพื่อพิมพ์หรือคัดลอก URL สำหรับติดที่โต๊ะ
+        </div>
+      </div>
+      <div class="qr-grid" id="qr-codes-grid"></div>
+    </div>
+
+    <!-- ===== แจ้งปัญหา ===== -->
+    <div id="page-reports" class="admin-page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2>⚠️ ศูนย์รับแจ้งปัญหา</h2>
+        <button class="btn btn-outline btn-sm" onclick="loadReportsPage()">🔄 รีเฟรช</button>
+      </div>
+      <div id="reports-list"></div>
+    </div>
+
+    <!-- ===== ยอดขาย ===== -->
+    <div id="page-sales" class="admin-page">
+      <div style="margin-bottom:20px">
+        <h2>💰 รายงานยอดขาย</h2>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+        <div class="stat-card">
+          <div class="stat-label">ยอดขายรวม</div>
+          <div class="stat-value" id="sales-total">฿0</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-label">จำนวนออเดอร์</div>
+          <div class="stat-value" id="sales-count">0</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div class="card">
+          <div class="card-header"><span class="card-title">🏆 เมนูขายดี</span></div>
+          <div id="top-menus-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">📅 ยอดขายรายวัน</span></div>
+          <div id="daily-sales-list"></div>
+        </div>
+      </div>
+
+      <!-- ปุ่มทดสอบ: เพิ่มออเดอร์ตัวอย่าง -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><span class="card-title">🧪 เครื่องมือทดสอบ</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="generateTestOrders()">
+            ➕ สร้างออเดอร์ทดสอบ 5 รายการ
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="clearAllOrders()">
+            🗑️ ล้างออเดอร์ทั้งหมด
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ผู้ใช้ ===== -->
+    <div id="page-users" class="admin-page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2>👥 จัดการผู้ใช้</h2>
+        <button class="btn btn-outline btn-sm" onclick="window.open('register.html','_blank')">
+          + เพิ่มผู้ใช้ใหม่
+        </button>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ชื่อ</th>
+              <th>Username</th>
+              <th>อีเมล</th>
+              <th>บทบาท</th>
+              <th>วันที่สมัคร</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="users-list"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== Modal: เพิ่ม/แก้ไขเมนู ===== -->
+<div class="modal-overlay" id="menu-modal" style="display:none" onclick="if(event.target===this)closeMenuModal()">
+  <div class="modal-box center-modal" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title" id="menu-modal-title">เพิ่มเมนู</span>
+      <button class="modal-close" onclick="closeMenuModal()">✕</button>
+    </div>
+
+    <form id="menu-form" onsubmit="event.preventDefault()">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">ชื่อเมนู <span class="required">*</span></label>
+          <input type="text" id="menu-name" class="form-input" placeholder="เช่น ข้าวผัดกะเพรา">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">ราคา (บาท) <span class="required">*</span></label>
+          <input type="number" id="menu-price" class="form-input" placeholder="60" min="1">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">อีโมจิ</label>
+          <input type="text" id="menu-emoji" class="form-input" placeholder="🍽️" maxlength="4">
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">หมวดหมู่ <span class="required">*</span></label>
+          <select id="menu-category" class="form-select"></select>
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">รายละเอียด</label>
+          <input type="text" id="menu-description" class="form-input" placeholder="บรรยายเมนูสั้นๆ">
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">ป้ายกำกับพิเศษ</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer">
+              <input type="checkbox" class="tag-check" value="popular"> 🔥 ยอดนิยม
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer">
+              <input type="checkbox" class="tag-check" value="new"> ✨ เมนูใหม่
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer">
+              <input type="checkbox" class="tag-check" value="hot"> 🌶️ เผ็ด
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer">
+              <input type="checkbox" class="tag-check" value="veg"> 🥬 มังสวิรัติ
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer">
+              <input type="checkbox" class="tag-check" value="spicy"> 🔥 เผ็ดมาก
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="menu-available" checked>
+            <span class="form-label" style="margin:0">พร้อมจำหน่าย</span>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <button type="button" class="btn btn-ghost" onclick="closeMenuModal()">ยกเลิก</button>
+        <button type="button" class="btn btn-primary" onclick="saveMenuForm()">💾 บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Modal: QR Detail ===== -->
+<div class="modal-overlay" id="qr-detail-modal" style="display:none" onclick="if(event.target===this)closeQRModal()">
+  <div class="modal-box center-modal" style="max-width:360px;text-align:center">
+    <div class="modal-header">
+      <span class="modal-title" id="qr-detail-title">QR Code</span>
+      <button class="modal-close" onclick="closeQRModal()">✕</button>
+    </div>
+    <div class="qr-code-area" style="display:inline-block;margin-bottom:12px">
+      <canvas id="qr-detail-canvas" width="200" height="200"></canvas>
+    </div>
+    <p class="text-xs text-muted" id="qr-detail-url" style="word-break:break-all;margin-bottom:12px"></p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" id="qr-detail-print">🖨️ พิมพ์</button>
+      <button class="btn btn-ghost btn-sm" id="qr-detail-copy">📋 คัดลอก URL</button>
+      <button class="btn btn-primary btn-sm" id="qr-detail-open">🔗 เปิดหน้าลูกค้า</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: แก้ไขปัญหา ===== -->
+<div class="modal-overlay" id="resolve-modal" style="display:none" onclick="if(event.target===this)closeResolveModal()">
+  <div class="modal-box center-modal" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">✏️ บันทึกการแก้ไขปัญหา</span>
+      <button class="modal-close" onclick="closeResolveModal()">✕</button>
+    </div>
+    <input type="hidden" id="resolve-report-id">
+    <div class="form-group">
+      <label class="form-label">สถานะ</label>
+      <select id="resolve-status" class="form-select">
+        <option value="in_progress">🟡 กำลังแก้ไข</option>
+        <option value="resolved">🟢 แก้ไขแล้ว</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">รายละเอียดการแก้ไข <span class="required">*</span></label>
+      <textarea id="resolve-text" class="form-textarea" placeholder="อธิบายสิ่งที่ดำเนินการ..." rows="3"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeResolveModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="submitResolve()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container" class="toast-container"></div>
+
+<script src="js/auth.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/order.js"></script>
+<script src="js/qr.js"></script>
+<script src="js/admin.js"></script>
+<script>
+  // ===== เริ่มต้น Admin =====
+  window.onload = function() {
+    // ตรวจสอบสิทธิ์
+    if (!requireAuth('admin')) return;
+
+    const user = getCurrentUser();
+    document.getElementById('admin-user-name').textContent = user.name + ' (Admin)';
+
+    // โหลด Dashboard
+    adminNavigate('dashboard');
+    startAdminRefresh();
+
+    // ปิด sidebar เมื่อคลิกนอก (mobile)
+    document.addEventListener('click', function(e) {
+      const sidebar = document.getElementById('admin-sidebar');
+      if (window.innerWidth < 768 && sidebar.classList.contains('open')) {
+        if (!sidebar.contains(e.target) && !e.target.closest('.admin-mobile-header')) {
+          sidebar.classList.remove('open');
+        }
+      }
+    });
+  };
+
+  function toggleAdminSidebar() {
+    document.getElementById('admin-sidebar').classList.toggle('open');
+  }
+
+  // ===== เครื่องมือทดสอบ =====
+  function generateTestOrders() {
+    const menus = getMenus();
+    if (menus.length === 0) { showToast('ไม่มีเมนู', 'warning'); return; }
+
+    for (let i = 0; i < 5; i++) {
+      const tableId = Math.ceil(Math.random() * 8);
+      const randomMenus = menus.sort(() => 0.5 - Math.random()).slice(0, Math.ceil(Math.random() * 3));
+      const cart = {};
+      randomMenus.forEach(m => { cart[m.id] = Math.ceil(Math.random() * 2); });
+
+      const order = createOrder(tableId, cart, '', `ลูกค้าโต๊ะ ${tableId}`);
+
+      // สุ่มสถานะ
+      const statuses = ['confirmed', 'cooking', 'ready'];
+      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+      updateOrderStatus(order.id, randomStatus);
+
+      // สุ่มชำระเงิน
+      if (Math.random() > 0.5) {
+        processPayment(order.id, Math.random() > 0.5 ? 'cash' : 'transfer');
+      }
+    }
+    showToast('สร้างออเดอร์ทดสอบ 5 รายการแล้ว ✅', 'success');
+    loadSalesPage();
+    loadDashboard();
+  }
+
+  function clearAllOrders() {
+    if (confirm('⚠️ ยืนยันลบออเดอร์ทั้งหมด? ข้อมูลจะหายถาวร')) {
+      localStorage.removeItem('orders');
+      localStorage.removeItem('notifications');
+      showToast('ล้างออเดอร์ทั้งหมดแล้ว', 'success');
+      adminNavigate(adminCurrentPage);
+    }
+  }
+</script>
+</body>
+</html>

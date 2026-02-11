@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เข้าสู่ระบบ - ระบบสั่งอาหาร QR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="auth-wrapper">
+  <div class="auth-box">
+
+    <!-- โลโก้ -->
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🍽️</div>
+      <h1>ระบบสั่งอาหาร QR</h1>
+      <p>เข้าสู่ระบบเพื่อดำเนินการต่อ</p>
+    </div>
+
+    <!-- แจ้งเตือนผิดพลาด -->
+    <div id="error-msg" class="alert alert-danger hidden">
+      ⚠️ <span id="error-text"></span>
+    </div>
+
+    <!-- ฟอร์ม Login -->
+    <div class="form-group">
+      <label class="form-label">ชื่อผู้ใช้ <span class="required">*</span></label>
+      <input type="text" id="username" class="form-input" placeholder="กรอกชื่อผู้ใช้"
+             autocomplete="username" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">รหัสผ่าน <span class="required">*</span></label>
+      <input type="password" id="password" class="form-input" placeholder="กรอกรหัสผ่าน"
+             autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+
+    <button class="btn btn-primary btn-full btn-lg" onclick="doLogin()" id="login-btn">
+      🔐 เข้าสู่ระบบ
+    </button>
+
+    <div class="auth-divider">หรือ</div>
+
+    <button class="btn btn-outline btn-full" onclick="window.location.href='register.html'">
+      📝 สมัครสมาชิกใหม่
+    </button>
+
+    <!-- ข้อมูล Demo สำหรับครู -->
+    <div style="margin-top:24px;background:var(--gray-50);border-radius:var(--radius);padding:14px;">
+      <p class="text-xs fw-bold text-muted" style="margin-bottom:8px;">🔑 บัญชีทดสอบ:</p>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="fillDemo('admin','admin123')">
+          👑 Admin: admin / admin123
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="fillDemo('staff','staff123')">
+          👨‍🍳 พนักงาน: staff / staff123
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script src="js/auth.js"></script>
+<script>
+  // ถ้า login อยู่แล้ว ให้ redirect ไปหน้าที่เหมาะสม
+  (function() {
+    if (isLoggedIn()) {
+      redirectByRole(getCurrentUser());
+    }
+  })();
+
+  // ฟังก์ชัน Login
+  function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('login-btn');
+    const errMsg = document.getElementById('error-msg');
+    const errText = document.getElementById('error-text');
+
+    if (!username || !password) {
+      errText.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
+      errMsg.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> กำลังเข้าสู่ระบบ...';
+
+    setTimeout(() => {
+      const result = login(username, password);
+      if (result.success) {
+        btn.innerHTML = '✅ เข้าสู่ระบบสำเร็จ';
+        setTimeout(() => redirectByRole(result.user), 500);
+      } else {
+        errText.textContent = result.message;
+        errMsg.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '🔐 เข้าสู่ระบบ';
+      }
+    }, 600);
+  }
+
+  // กรอกข้อมูลสาธิต
+  function fillDemo(u, p) {
+    document.getElementById('username').value = u;
+    document.getElementById('password').value = p;
+    document.getElementById('error-msg').classList.add('hidden');
+  }
+</script>
+</body>
+</html>

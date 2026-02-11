@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สมัครสมาชิก - ระบบสั่งอาหาร QR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="auth-wrapper">
+  <div class="auth-box">
+
+    <!-- โลโก้ -->
+    <div class="auth-logo">
+      <div class="auth-logo-icon">📝</div>
+      <h1>สมัครสมาชิก</h1>
+      <p>สร้างบัญชีใหม่เพื่อใช้งานระบบ</p>
+    </div>
+
+    <!-- แจ้งเตือน -->
+    <div id="error-msg" class="alert alert-danger hidden"></div>
+    <div id="success-msg" class="alert alert-success hidden"></div>
+
+    <!-- ฟอร์ม Register -->
+    <div class="form-group">
+      <label class="form-label">ชื่อ-นามสกุล <span class="required">*</span></label>
+      <input type="text" id="name" class="form-input" placeholder="เช่น สมชาย ใจดี">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">ชื่อผู้ใช้ <span class="required">*</span></label>
+      <input type="text" id="username" class="form-input" placeholder="ภาษาอังกฤษ ไม่มีเว้นวรรค">
+      <div class="form-hint">ใช้สำหรับ Login (ภาษาอังกฤษหรือตัวเลข)</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">อีเมล</label>
+      <input type="email" id="email" class="form-input" placeholder="example@email.com (ไม่บังคับ)">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">รหัสผ่าน <span class="required">*</span></label>
+      <input type="password" id="password" class="form-input" placeholder="อย่างน้อย 6 ตัวอักษร">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">ยืนยันรหัสผ่าน <span class="required">*</span></label>
+      <input type="password" id="confirm-password" class="form-input" placeholder="กรอกรหัสผ่านอีกครั้ง">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">ประเภทบัญชี <span class="required">*</span></label>
+      <select id="role" class="form-select">
+        <option value="customer">👤 ลูกค้า</option>
+        <option value="staff">👨‍🍳 พนักงาน/ครัว</option>
+      </select>
+      <div class="form-hint">หมายเหตุ: บัญชี Admin ต้องได้รับการอนุมัติจากผู้ดูแล</div>
+    </div>
+
+    <button class="btn btn-primary btn-full btn-lg" onclick="doRegister()" id="register-btn">
+      ✅ สมัครสมาชิก
+    </button>
+
+    <div class="auth-divider">มีบัญชีอยู่แล้ว?</div>
+
+    <button class="btn btn-outline btn-full" onclick="window.location.href='login.html'">
+      🔐 เข้าสู่ระบบ
+    </button>
+
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script src="js/auth.js"></script>
+<script>
+  // ถ้า login อยู่แล้ว redirect
+  if (isLoggedIn()) {
+    redirectByRole(getCurrentUser());
+  }
+
+  function doRegister() {
+    const name = document.getElementById('name').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    const role = document.getElementById('role').value;
+
+    const errEl = document.getElementById('error-msg');
+    const sucEl = document.getElementById('success-msg');
+    errEl.classList.add('hidden');
+    sucEl.classList.add('hidden');
+
+    // Validation
+    if (!name || !username || !password || !confirmPassword) {
+      errEl.textContent = '⚠️ กรุณากรอกข้อมูลที่จำเป็นให้ครบ';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    if (username.length < 3) {
+      errEl.textContent = '⚠️ ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      errEl.textContent = '⚠️ ชื่อผู้ใช้ใช้ได้เฉพาะภาษาอังกฤษ ตัวเลข และ _';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    if (password.length < 6) {
+      errEl.textContent = '⚠️ รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      errEl.textContent = '⚠️ รหัสผ่านไม่ตรงกัน';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const btn = document.getElementById('register-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> กำลังสมัคร...';
+
+    setTimeout(() => {
+      const result = register({ name, username, email, password, role });
+
+      if (result.success) {
+        sucEl.textContent = `✅ สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ ${name}`;
+        sucEl.classList.remove('hidden');
+        btn.innerHTML = '✅ สำเร็จ!';
+
+        setTimeout(() => redirectByRole(result.user), 1200);
+      } else {
+        errEl.textContent = '⚠️ ' + result.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '✅ สมัครสมาชิก';
+      }
+    }, 700);
+  }
+</script>
+</body>
+</html>

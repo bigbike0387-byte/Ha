@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สั่งอาหาร - ระบบ QR Order</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-container">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="header-logo">🍽️</div>
+      <div>
+        <div class="header-title">ร้านอาหารไทย QR</div>
+        <div class="header-subtitle" id="header-table-info">กำลังโหลด...</div>
+      </div>
+    </div>
+    <button class="btn btn-accent btn-sm" onclick="callStaffBtn()">🔔 เรียกพนักงาน</button>
+  </header>
+
+  <!-- แถบข้อมูลโต๊ะ -->
+  <div class="table-info-bar">
+    <div>
+      <div class="table-num" id="table-display">โต๊ะ -</div>
+      <div class="table-session" id="session-info">เปิดโต๊ะ: -</div>
+    </div>
+    <div id="order-status-mini" style="display:none">
+      <span id="current-status-badge"></span>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <div class="tab-nav" id="main-tabs">
+    <button class="tab-item active" data-tab="menu-tab" onclick="switchTab('menu-tab', this)">
+      <span class="tab-icon">🍜</span>เมนูอาหาร
+    </button>
+    <button class="tab-item" data-tab="cart-tab" onclick="switchTab('cart-tab', this)">
+      <span class="tab-icon">🛒</span>ตะกร้า
+      <span id="cart-badge" class="fab-badge" style="position:relative;top:0;right:0;display:none">0</span>
+    </button>
+    <button class="tab-item" data-tab="status-tab" onclick="switchTab('status-tab', this)">
+      <span class="tab-icon">📋</span>ออเดอร์
+    </button>
+    <button class="tab-item" data-tab="chat-tab" onclick="switchTab('chat-tab', this)">
+      <span class="tab-icon">💬</span>แชท
+      <span id="chat-badge" class="fab-badge" style="position:relative;top:0;right:0;display:none">!</span>
+    </button>
+  </div>
+
+  <!-- ===== Tab: เมนูอาหาร ===== -->
+  <div id="menu-tab" class="tab-content active">
+
+    <!-- ค้นหาเมนู -->
+    <div style="padding:12px 16px 0">
+      <input type="text" id="menu-search" class="form-input" placeholder="🔍 ค้นหาเมนู..."
+             oninput="filterMenu(this.value)">
+    </div>
+
+    <!-- หมวดหมู่ Quick Filter -->
+    <div style="padding:10px 16px;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <button class="btn btn-sm btn-primary" onclick="filterCategory('all', this)">ทั้งหมด</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterCategory('ข้าวและเส้น', this)">🍚 ข้าว/เส้น</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterCategory('ซุปและน้ำแกง', this)">🍲 ซุป</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterCategory('อาหารจานเดี่ยว', this)">🍗 จานเดี่ยว</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterCategory('ยำและสลัด', this)">🥗 ยำ</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterCategory('เครื่องดื่ม', this)">🥤 เครื่องดื่ม</button>
+    </div>
+
+    <!-- รายการเมนู -->
+    <div id="menu-container"></div>
+  </div>
+
+  <!-- ===== Tab: ตะกร้า ===== -->
+  <div id="cart-tab" class="tab-content">
+    <div style="padding:16px">
+
+      <div id="cart-empty" class="empty-state">
+        <div class="empty-icon">🛒</div>
+        <div class="empty-text">ตะกร้าว่างเปล่า</div>
+        <div class="empty-sub">เลือกเมนูที่ต้องการจากแท็บ "เมนูอาหาร"</div>
+      </div>
+
+      <div id="cart-content" style="display:none">
+        <!-- รายการในตะกร้า -->
+        <div class="cart-items" id="cart-items-list"></div>
+
+        <!-- หมายเหตุถึงครัว -->
+        <div class="form-group">
+          <label class="form-label">📝 หมายเหตุถึงครัว</label>
+          <textarea id="order-note" class="form-textarea" placeholder="เช่น ไม่เผ็ด, ไม่ใส่ผัก, น้ำแข็งน้อย..."
+                    rows="2" oninput="saveNoteToSession(this.value)"></textarea>
+        </div>
+
+        <!-- ราคารวม -->
+        <div class="cart-summary">
+          <div class="cart-row">
+            <span>รายการอาหาร</span>
+            <span id="cart-item-count">0 รายการ</span>
+          </div>
+          <div class="cart-row cart-total">
+            <span>💰 ยอดรวม</span>
+            <span id="cart-total-price" class="fw-bold">฿0</span>
+          </div>
+        </div>
+
+        <!-- ปุ่มสั่งอาหาร -->
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary btn-full btn-lg" onclick="submitOrder()">
+            ✅ สั่งอาหาร
+          </button>
+          <button class="btn btn-ghost btn-full btn-sm" onclick="clearCartConfirm()">
+            🗑️ ล้างตะกร้า
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab: ออเดอร์ / สถานะ ===== -->
+  <div id="status-tab" class="tab-content">
+    <div style="padding:16px">
+
+      <div id="no-order-msg" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">ยังไม่มีออเดอร์</div>
+        <div class="empty-sub">สั่งอาหารจากแท็บ "เมนูอาหาร"</div>
+      </div>
+
+      <div id="order-detail-section" style="display:none">
+
+        <!-- Timeline สถานะ -->
+        <div class="card mb-12">
+          <div class="card-header">
+            <span class="card-title">สถานะออเดอร์</span>
+            <span id="order-status-badge"></span>
+          </div>
+          <div class="status-timeline" id="status-timeline"></div>
+        </div>
+
+        <!-- รายการที่สั่ง -->
+        <div class="card mb-12">
+          <div class="card-header">
+            <span class="card-title">รายการที่สั่ง</span>
+            <span id="order-id-display" class="text-xs text-muted"></span>
+          </div>
+          <div id="ordered-items-list"></div>
+          <div class="divider"></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span class="fw-bold">ยอดรวม</span>
+            <span class="fw-bold text-primary" id="order-total-display"></span>
+          </div>
+        </div>
+
+        <!-- ชำระเงิน -->
+        <div class="card mb-12" id="payment-section" style="display:none">
+          <div class="card-header">
+            <span class="card-title">💳 ชำระเงิน</span>
+          </div>
+
+          <div class="payment-method">
+            <div class="pay-option" onclick="selectPayMethod('cash', this)">
+              <div class="pay-option-icon">💵</div>
+              <div>เงินสด</div>
+            </div>
+            <div class="pay-option" onclick="selectPayMethod('transfer', this)">
+              <div class="pay-option-icon">📲</div>
+              <div>โอนเงิน</div>
+            </div>
+          </div>
+
+          <div id="transfer-qr" style="display:none">
+            <div class="promptpay-box">
+              <p class="text-sm fw-bold">สแกน PromptPay เพื่อโอน</p>
+              <div class="promptpay-amount" id="transfer-amount">฿0</div>
+              <div style="background:#fff;border:2px solid var(--primary);border-radius:8px;padding:8px;display:inline-block;margin-top:8px;">
+                <div style="font-size:3rem;line-height:1">📲</div>
+                <div style="font-size:0.7rem;color:var(--gray-500)">0xx-xxx-xxxx</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-success btn-full" id="confirm-pay-btn" onclick="confirmPayment()" disabled>
+            ✅ ยืนยันการชำระเงิน
+          </button>
+        </div>
+
+        <!-- แจ้งปัญหา -->
+        <div style="margin-top:8px">
+          <button class="btn btn-ghost btn-full btn-sm" onclick="openReportModal()">
+            ⚠️ แจ้งปัญหา / ขอความช่วยเหลือ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab: แชท ===== -->
+  <div id="chat-tab" class="tab-content">
+    <div style="padding:16px">
+
+      <div id="chat-no-order" class="empty-state">
+        <div class="empty-icon">💬</div>
+        <div class="empty-text">แชทพร้อมใช้หลังสั่งอาหาร</div>
+        <div class="empty-sub">กรุณาสั่งอาหารก่อนเพื่อเปิดแชทกับครัว</div>
+      </div>
+
+      <div id="chat-section" style="display:none">
+        <div class="chat-container">
+          <div class="chat-messages" id="chat-messages"></div>
+        </div>
+        <div class="chat-input-area" style="margin-top:8px;border:1.5px solid var(--gray-200);border-radius:var(--radius);overflow:hidden">
+          <input type="text" id="chat-input" placeholder="พิมพ์ข้อความถึงครัว..."
+                 onkeydown="if(event.key==='Enter') sendMsg()">
+          <button class="btn btn-primary btn-sm" onclick="sendMsg()">ส่ง</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="quickMsg('🙏 ขอบคุณ')">🙏 ขอบคุณ</button>
+          <button class="btn btn-ghost btn-sm" onclick="quickMsg('ขออีก 1 ชุด')">➕ ขออีก 1 ชุด</button>
+          <button class="btn btn-ghost btn-sm" onclick="quickMsg('ยังไม่ได้รับอาหาร')">⏳ รอนาน</button>
+          <button class="btn btn-ghost btn-sm" onclick="quickMsg('ขอน้ำแข็งเพิ่ม')">🧊 น้ำแข็งเพิ่ม</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: แจ้งปัญหา -->
+<div class="modal-overlay" id="report-modal" style="display:none" onclick="if(event.target===this)closeReportModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">⚠️ แจ้งปัญหา</span>
+      <button class="modal-close" onclick="closeReportModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">รายละเอียดปัญหา</label>
+      <textarea id="report-desc" class="form-textarea" placeholder="อธิบายปัญหาที่พบ เช่น อาหารไม่ถูกต้อง, สกปรก, รอนาน..." rows="3"></textarea>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="submitReport()">📤 ส่งแจ้งปัญหา</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Scripts -->
+<script src="js/auth.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/order.js"></script>
+<script>
+  // ===== ตัวแปรหลัก =====
+  let tableId = '';
+  let currentOrder = null;
+  let selectedPayMethod = null;
+  let chatRefreshTimer = null;
+  let orderRefreshTimer = null;
+
+  // ===== เริ่มต้นหน้า =====
+  window.onload = function() {
+    tableId = getTableFromURL();
+    if (!tableId) return;
+
+    // แสดงข้อมูลโต๊ะ
+    document.getElementById('table-display').textContent = `โต๊ะที่ ${tableId}`;
+    document.getElementById('header-table-info').textContent = `โต๊ะที่ ${tableId}`;
+    document.getElementById('session-info').textContent = `เปิดโต๊ะ: ${new Date().toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'})}`;
+
+    // Load เมนูและตะกร้า
+    renderMenuList();
+    renderCart();
+    loadCurrentOrder();
+
+    // โหลดหมายเหตุที่บันทึกไว้
+    const savedNote = sessionStorage.getItem(`note_table_${tableId}`);
+    if (savedNote) document.getElementById('order-note').value = savedNote;
+
+    // Auto refresh ออเดอร์และแชท
+    orderRefreshTimer = setInterval(() => {
+      loadCurrentOrder();
+      if (currentOrder) refreshChat();
+    }, 5000);
+
+    // ฟัง Event เมนูเปลี่ยน
+    window.addEventListener('menuUpdated', renderMenuList);
+  };
+
+  // ===== แสดงเมนู =====
+  function renderMenuList(filter, category) {
+    const container = document.getElementById('menu-container');
+    const grouped = getMenusByCategory();
+
+    let html = '';
+    Object.entries(grouped).forEach(([cat, items]) => {
+      if (category && category !== 'all' && cat !== category) return;
+      const filteredItems = filter
+        ? items.filter(m => m.name.includes(filter) || m.description.includes(filter))
+        : items;
+      if (filteredItems.length === 0) return;
+
+      html += `<div class="menu-section">
+        <div class="menu-section-title">${cat}</div>
+        <div class="menu-grid">`;
+
+      filteredItems.forEach(menu => {
+        const cart = getCart(tableId);
+        const qty = cart[menu.id] || 0;
+        html += renderMenuItem(menu, qty);
+      });
+
+      html += `</div></div>`;
+    });
+
+    if (!html) {
+      html = `<div class="empty-state"><div class="empty-icon">🔍</div>
+        <p class="empty-text">ไม่พบเมนูที่ค้นหา</p></div>`;
+    }
+
+    container.innerHTML = html;
+  }
+
+  // ===== ค้นหาเมนู =====
+  function filterMenu(keyword) {
+    renderMenuList(keyword);
+  }
+
+  // ===== กรองตามหมวด =====
+  let currentCategory = 'all';
+  function filterCategory(cat, btn) {
+    currentCategory = cat;
+    document.querySelectorAll('.tab-content.active .btn-ghost, .tab-content.active .btn-primary').forEach(b => {
+      if (b.closest('[style*="gap"]')) {
+        b.className = 'btn btn-sm btn-ghost';
+      }
+    });
+    btn.className = 'btn btn-sm btn-primary';
+    renderMenuList(null, cat === 'all' ? null : cat);
+  }
+
+  // ===== ฟังก์ชันปรับจำนวนอาหาร =====
+  function increaseQty(menuId) {
+    addToCart(tableId, menuId);
+    updateQtyDisplay(menuId);
+    updateCartBadge();
+  }
+
+  function decreaseQty(menuId) {
+    removeFromCart(tableId, menuId);
+    updateQtyDisplay(menuId);
+    updateCartBadge();
+  }
+
+  function updateQtyDisplay(menuId) {
+    const cart = getCart(tableId);
+    const qty = cart[menuId] || 0;
+    const el = document.getElementById(`qty-${menuId}`);
+    if (el) el.textContent = qty;
+  }
+
+  function updateCartBadge() {
+    const count = getCartCount(tableId);
+    const badge = document.getElementById('cart-badge');
+    if (count > 0) {
+      badge.style.display = 'flex';
+      badge.textContent = count;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // ===== แสดงตะกร้า =====
+  function renderCart() {
+    const cart = getCart(tableId);
+    const menus = getMenus();
+    const cartEmpty = document.getElementById('cart-empty');
+    const cartContent = document.getElementById('cart-content');
+
+    const entries = Object.entries(cart);
+    if (entries.length === 0) {
+      cartEmpty.style.display = 'block';
+      cartContent.style.display = 'none';
+      return;
+    }
+
+    cartEmpty.style.display = 'none';
+    cartContent.style.display = 'block';
+
+    let html = '';
+    let total = 0;
+    let itemCount = 0;
+
+    entries.forEach(([menuId, qty]) => {
+      const menu = menus.find(m => m.id === menuId);
+      if (!menu) return;
+      const subtotal = menu.price * qty;
+      total += subtotal;
+      itemCount += qty;
+
+      html += `
+        <div class="cart-item">
+          <span style="font-size:1.2rem">${menu.emoji}</span>
+          <span class="cart-item-name">${menu.name}</span>
+          <span class="cart-item-qty">x${qty}</span>
+          <span class="cart-item-price">${formatPrice(subtotal)}</span>
+          <button class="cart-remove" onclick="removeItemFull('${menuId}')">✕</button>
+        </div>`;
+    });
+
+    document.getElementById('cart-items-list').innerHTML = html;
+    document.getElementById('cart-item-count').textContent = itemCount + ' รายการ';
+    document.getElementById('cart-total-price').textContent = formatPrice(total);
+    updateCartBadge();
+  }
+
+  function removeItemFull(menuId) {
+    removeItemFromCart(tableId, menuId);
+    const el = document.getElementById(`qty-${menuId}`);
+    if (el) el.textContent = '0';
+    renderCart();
+  }
+
+  function clearCartConfirm() {
+    if (confirm('ล้างตะกร้าทั้งหมด?')) {
+      clearCart(tableId);
+      renderMenuList();
+      renderCart();
+    }
+  }
+
+  function saveNoteToSession(val) {
+    sessionStorage.setItem(`note_table_${tableId}`, val);
+  }
+
+  // ===== สั่งอาหาร =====
+  function submitOrder() {
+    const cart = getCart(tableId);
+    if (Object.keys(cart).length === 0) {
+      showToastCustomer('กรุณาเลือกเมนูก่อนสั่งอาหาร', 'warning');
+      return;
+    }
+
+    if (currentOrder && !['paid','cancelled'].includes(currentOrder.status)) {
+      showToastCustomer('คุณมีออเดอร์ที่ยังไม่เสร็จอยู่', 'warning');
+      return;
+    }
+
+    const note = document.getElementById('order-note').value;
+    currentOrder = createOrder(tableId, cart, note);
+
+    showToastCustomer('✅ สั่งอาหารสำเร็จ! กำลังส่งไปครัว', 'success');
+    renderCart();
+    renderMenuList();
+
+    // สลับไปแท็บออเดอร์
+    setTimeout(() => {
+      switchTabById('status-tab');
+      loadCurrentOrder();
+    }, 800);
+  }
+
+  // ===== โหลดออเดอร์ปัจจุบัน =====
+  function loadCurrentOrder() {
+    currentOrder = getActiveOrderByTable(tableId);
+
+    if (!currentOrder) {
+      document.getElementById('no-order-msg').style.display = 'block';
+      document.getElementById('order-detail-section').style.display = 'none';
+      document.getElementById('chat-no-order').style.display = 'block';
+      document.getElementById('chat-section').style.display = 'none';
+      document.getElementById('order-status-mini').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('no-order-msg').style.display = 'none';
+    document.getElementById('order-detail-section').style.display = 'block';
+    document.getElementById('chat-no-order').style.display = 'none';
+    document.getElementById('chat-section').style.display = 'block';
+
+    // แสดงสถานะ
+    const statusInfo = ORDER_STATUS[currentOrder.status];
+    document.getElementById('order-status-badge').innerHTML = renderStatusBadge(currentOrder.status);
+    document.getElementById('order-status-mini').style.display = 'flex';
+    document.getElementById('current-status-badge').innerHTML = renderStatusBadge(currentOrder.status);
+
+    // Timeline
+    renderStatusTimeline(currentOrder.status);
+
+    // รายการสินค้า
+    document.getElementById('order-id-display').textContent = '#' + currentOrder.id.slice(-6);
+    document.getElementById('ordered-items-list').innerHTML = currentOrder.items.map(item => `
+      <div class="order-item-row">
+        <span>${item.emoji} ${item.menuName} x${item.qty}</span>
+        <span class="fw-bold">${formatPrice(item.subtotal)}</span>
+      </div>`).join('');
+    document.getElementById('order-total-display').textContent = formatPrice(currentOrder.total);
+
+    // ชำระเงิน
+    const paySection = document.getElementById('payment-section');
+    if (currentOrder.status === 'served' && currentOrder.paymentStatus !== 'paid') {
+      paySection.style.display = 'block';
+      document.getElementById('transfer-amount').textContent = formatPrice(currentOrder.total);
+    } else {
+      paySection.style.display = 'none';
+    }
+
+    // แชท
+    refreshChat();
+  }
+
+  // ===== Timeline Status =====
+  function renderStatusTimeline(currentStatus) {
+    const steps = ['pending', 'confirmed', 'cooking', 'ready', 'served'];
+    const currentIdx = steps.indexOf(currentStatus);
+
+    let html = '';
+    steps.forEach((step, idx) => {
+      const info = ORDER_STATUS[step];
+      const isDone = idx < currentIdx;
+      const isActive = idx === currentIdx;
+      html += `
+        <div class="status-step ${isDone ? 'done' : isActive ? 'active' : ''}">
+          <div class="status-dot">${isDone ? '✓' : info.icon}</div>
+          <div class="status-label">${info.label}</div>
+        </div>`;
+    });
+
+    document.getElementById('status-timeline').innerHTML = html;
+  }
+
+  // ===== ชำระเงิน =====
+  function selectPayMethod(method, el) {
+    selectedPayMethod = method;
+    document.querySelectorAll('.pay-option').forEach(p => p.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('confirm-pay-btn').disabled = false;
+
+    const transferQR = document.getElementById('transfer-qr');
+    transferQR.style.display = method === 'transfer' ? 'block' : 'none';
+  }
+
+  function confirmPayment() {
+    if (!selectedPayMethod || !currentOrder) return;
+    processPayment(currentOrder.id, selectedPayMethod);
+    showToastCustomer('💳 ชำระเงินสำเร็จ! ขอบคุณที่ใช้บริการ 🙏', 'success');
+    loadCurrentOrder();
+  }
+
+  // ===== แชท =====
+  function refreshChat() {
+    if (!currentOrder) return;
+    const msgs = getChatMessages(currentOrder.id);
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    container.innerHTML = msgs.map(m => {
+      if (m.sender === 'system') {
+        return `<div style="text-align:center;font-size:0.75rem;color:var(--gray-400);padding:4px">${m.text}</div>`;
+      }
+      const isMe = m.sender === 'customer';
+      return `
+        <div class="chat-bubble ${isMe ? 'sent' : 'received'}">
+          ${!isMe ? `<div class="chat-sender">${m.senderName}</div>` : ''}
+          ${m.text}
+          <div class="chat-time">${formatTime(m.time)}</div>
+        </div>`;
+    }).join('');
+
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function sendMsg() {
+    if (!currentOrder) return;
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    sendChatMessage(currentOrder.id, 'customer', `ลูกค้าโต๊ะ ${tableId}`, text);
+    input.value = '';
+    refreshChat();
+  }
+
+  function quickMsg(text) {
+    if (!currentOrder) { showToastCustomer('กรุณาสั่งอาหารก่อน', 'warning'); return; }
+    sendChatMessage(currentOrder.id, 'customer', `ลูกค้าโต๊ะ ${tableId}`, text);
+    refreshChat();
+  }
+
+  // ===== เรียกพนักงาน =====
+  function callStaffBtn() {
+    callStaff(tableId);
+    showToastCustomer('🔔 แจ้งพนักงานแล้ว กรุณารอสักครู่', 'success');
+  }
+
+  // ===== แจ้งปัญหา =====
+  function openReportModal() {
+    document.getElementById('report-modal').style.display = 'flex';
+  }
+  function closeReportModal() {
+    document.getElementById('report-modal').style.display = 'none';
+  }
+  function submitReport() {
+    const desc = document.getElementById('report-desc').value.trim();
+    if (!desc) { showToastCustomer('กรุณากรอกรายละเอียดปัญหา', 'warning'); return; }
+
+    addReport({
+      tableId,
+      orderId: currentOrder ? currentOrder.id : '',
+      description: desc,
+      submittedBy: `ลูกค้าโต๊ะ ${tableId}`
+    });
+
+    showToastCustomer('📤 ส่งแจ้งปัญหาแล้ว ทีมงานจะรีบช่วยเหลือ', 'success');
+    closeReportModal();
+    document.getElementById('report-desc').value = '';
+  }
+
+  // ===== Tab Switch =====
+  function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    if (btn) btn.classList.add('active');
+
+    if (tabId === 'cart-tab') renderCart();
+    if (tabId === 'status-tab') loadCurrentOrder();
+    if (tabId === 'chat-tab') { loadCurrentOrder(); refreshChat(); }
+    if (tabId === 'menu-tab') renderMenuList();
+  }
+
+  function switchTabById(tabId) {
+    const btn = document.querySelector(`[data-tab="${tabId}"]`);
+    switchTab(tabId, btn);
+  }
+
+  // ===== Toast สำหรับ customer =====
+  function showToastCustomer(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('removing');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+</script>
+</body>
+</html>
